@@ -8,10 +8,25 @@ import com.malinskiy.marathon.test.Test
 import java.io.File
 
 class IOSTestParser : TestParser {
-    private val swiftTestClassRegex = """class ([^:\s]+)\s*:\s*XCTestCase""".toRegex()
+    private val swiftTestClassRegex = """class ([^:\s]+)\s*:\s*\w*TestCase""".toRegex()
     private val swiftTestMethodRegex = """^.*func\s+(test[^(\s]*)\s*\(.*$""".toRegex()
 
     private val logger = MarathonLogging.logger(IOSTestParser::class.java.simpleName)
+
+    private fun isCompileSource(file: File): Boolean = !file.isDirectory
+
+    private fun listTestMethods(compileSource: File): Sequence<Test> {
+        var testCaseName: String = ""
+        return compileSource.readLines().mapNotNull {
+            testCaseName = it.firstMatchOrNull(swiftTestClassRegex) ?: testCaseName
+            val methodName = it.firstMatchOrNull(swiftTestMethodRegex) ?: ""
+            if (methodName.isNotEmpty() && testCaseName.isNotEmpty()) {
+                Test("TransportUITests", testCaseName, methodName, emptyList())
+            } else {
+                null
+            }
+        }.asSequence()
+    }
 
     /**
      *  Looks up test methods running a text search in swift files. Considers classes that explicitly inherit
@@ -30,30 +45,17 @@ class IOSTestParser : TestParser {
         val xctestrun = Xctestrun(vendorConfiguration.xctestrunPath)
         val targetName = xctestrun.targetName
 
-        val swiftFilesWithTests = vendorConfiguration
+        val compileSources = vendorConfiguration
                 .sourceRoot
                 .listFiles("swift")
+                .filter(::isCompileSource)
                 .filter(swiftTestClassRegex)
 
-        val implementedTests = mutableListOf<Test>()
-        for (file in swiftFilesWithTests) {
-            var testClassName: String? = null
-            for (line in file.readLines()) {
-                val className = line.firstMatchOrNull(swiftTestClassRegex)
-                val methodName = line.firstMatchOrNull(swiftTestMethodRegex)
-
-                if (className != null) { testClassName = className }
-
-                if (testClassName != null && methodName != null) {
-                    implementedTests.add(Test(targetName, testClassName, methodName, emptyList()))
-                }
-            }
-        }
-
-        val filteredTests = implementedTests.filter { !xctestrun.isSkipped(it) }
+        val testList = compileSources.flatMap(::listTestMethods)
+        val filteredTests = testList.filter { !xctestrun.isSkipped(it) }.toList()
 
         logger.trace { filteredTests.map { "${it.clazz}.${it.method}" }.joinToString() }
-        logger.info { "Found ${filteredTests.size} tests in ${swiftFilesWithTests.count()} files"}
+        logger.info { "Found ${filteredTests.size} tests in ${compileSources.count()} files"}
 
         return filteredTests
     }

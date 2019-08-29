@@ -19,7 +19,7 @@ data class IOSConfiguration(val derivedDataDir: File,
                             val compactOutput: Boolean = false,
                             val keepAliveIntervalMillis: Long = 0L,
                             val devicesFile: File? = null,
-                            val sourceRoot: File = File(".")) : VendorConfiguration {
+                            val sourceRoot: File) : VendorConfiguration {
 
     override fun testParser(): TestParser? = IOSTestParser()
 

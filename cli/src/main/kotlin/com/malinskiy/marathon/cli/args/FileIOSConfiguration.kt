@@ -22,7 +22,7 @@ data class FileIOSConfiguration(
         @JsonProperty("remotePrivateKey") val remotePrivateKey: File,
         @JsonProperty("knownHostsPath") val knownHostsPath: File?,
         @JsonProperty("remoteRsyncPath") val remoteRsyncPath: String = "/usr/bin/rsync",
-        @JsonProperty("sourceRoot") val sourceRoot: File?,
+        @JsonProperty("sourceRoot") val sourceRoot: File,
         @JsonProperty("alwaysEraseSimulators") val alwaysEraseSimulators: Boolean?,
         @JsonProperty("debugSsh") val debugSsh: Boolean?,
         @JsonProperty("hideRunnerOutput") val hideRunnerOutput: Boolean?,
@@ -31,8 +31,7 @@ data class FileIOSConfiguration(
         @JsonProperty("devices") val devices: File?,
         val fileListProvider: FileListProvider = DerivedDataFileListProvider) : FileVendorConfiguration {
 
-    fun toIOSConfiguration(marathonfileDir: File,
-                           sourceRootOverride: File? = null): IOSConfiguration {
+    fun toIOSConfiguration(marathonfileDir: File): IOSConfiguration {
         // Any relative path specified in Marathonfile should be resolved against the directory Marathonfile is in
         val resolvedDerivedDataDir = marathonfileDir.resolve(derivedDataDir)
         val finalXCTestRunPath = xctestrunPath?.resolveAgainst(marathonfileDir)
@@ -40,8 +39,6 @@ data class FileIOSConfiguration(
                         .fileList(resolvedDerivedDataDir)
                         .firstOrNull { it.extension == "xctestrun" }
                 ?: throw ConfigurationException("Unable to find an xctestrun file in derived data folder")
-        val optionalSourceRoot = sourceRootOverride
-                ?: sourceRoot?.resolveAgainst(marathonfileDir)
         val optionalDebugSsh = debugSsh ?: false
         val optionalAlwaysEraseSimulators = alwaysEraseSimulators ?: true
         val optionalDevices = devices?.resolveAgainst(marathonfileDir)
@@ -49,36 +46,21 @@ data class FileIOSConfiguration(
         val optionalKnownHostsPath = knownHostsPath?.resolveAgainst(marathonfileDir)
         val optionalHideRunnerOutput = hideRunnerOutput ?: false
 
-        return if (optionalSourceRoot == null) {
-            IOSConfiguration(
-                    derivedDataDir = resolvedDerivedDataDir,
-                    xctestrunPath = finalXCTestRunPath,
-                    remoteUsername = remoteUsername,
-                    remotePrivateKey = remotePrivateKey,
-                    knownHostsPath = optionalKnownHostsPath,
-                    remoteRsyncPath = remoteRsyncPath,
-                    debugSsh = optionalDebugSsh,
-                    alwaysEraseSimulators = optionalAlwaysEraseSimulators,
-                    hideRunnerOutput = optionalHideRunnerOutput,
-                    compactOutput = compactOutput,
-                    keepAliveIntervalMillis = keepAliveIntervalMillis,
-                    devicesFile = optionalDevices)
-        } else {
-            IOSConfiguration(
-                    derivedDataDir = resolvedDerivedDataDir,
-                    xctestrunPath = finalXCTestRunPath,
-                    remoteUsername = remoteUsername,
-                    remotePrivateKey = remotePrivateKey,
-                    knownHostsPath = optionalKnownHostsPath,
-                    remoteRsyncPath = remoteRsyncPath,
-                    debugSsh = optionalDebugSsh,
-                    alwaysEraseSimulators = optionalAlwaysEraseSimulators,
-                    hideRunnerOutput = optionalHideRunnerOutput,
-                    compactOutput = compactOutput,
-                    keepAliveIntervalMillis = keepAliveIntervalMillis,
-                    devicesFile = optionalDevices,
-                    sourceRoot = optionalSourceRoot)
-        }
+        return IOSConfiguration(
+                derivedDataDir = resolvedDerivedDataDir,
+                xctestrunPath = finalXCTestRunPath,
+                remoteUsername = remoteUsername,
+                remotePrivateKey = remotePrivateKey,
+                knownHostsPath = optionalKnownHostsPath,
+                remoteRsyncPath = remoteRsyncPath,
+                debugSsh = optionalDebugSsh,
+                alwaysEraseSimulators = optionalAlwaysEraseSimulators,
+                hideRunnerOutput = optionalHideRunnerOutput,
+                compactOutput = compactOutput,
+                keepAliveIntervalMillis = keepAliveIntervalMillis,
+                devicesFile = optionalDevices,
+                sourceRoot = sourceRoot
+        )
     }
 }
 
